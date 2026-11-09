@@ -28,6 +28,7 @@ jobs:
               set -eu
 
               CC=arm-miyoo-linux-uclibcgnueabi-gcc
+              CXX=arm-miyoo-linux-uclibcgnueabi-g++
 
               echo "=== COMPILER ==="
               command -v "$CC"
@@ -43,12 +44,31 @@ jobs:
               "$CC" -Q --help=target 2>&1 |
                 grep -E "march|mcpu|mfloat-abi|mfpu" || true
 
-              echo "=== BUILD TEST ==="
+              echo "=== BUILD C TEST ==="
               printf "int main(void) { return 0; }\n" > /tmp/test.c
               "$CC" /tmp/test.c -o /tmp/test-arm
 
-              echo "=== ELF ATTRIBUTES ==="
+              echo "=== C ELF ATTRIBUTES ==="
               readelf -h -A -d /tmp/test-arm
+
+              echo "=== C++ COMPILER ==="
+              command -v "$CXX"
+              "$CXX" -dumpmachine
+
+              echo "=== BUILD C++ SHARED LIBRARY ==="
+              cat > /tmp/test.cpp <<EOF
+              #include <string>
+
+              extern "C" int fake08_test() {
+                  std::string s("RG35XX");
+                  return static_cast<int>(s.size());
+              }
+              EOF
+
+              "$CXX" -shared -fPIC -shared-libgcc /tmp/test.cpp -o /tmp/test-cpp.so
+
+              echo "=== C++ LIBRARY DEPENDENCIES ==="
+              readelf -h -A -d -V /tmp/test-cpp.so
             ' 2>&1 | tee rg35xx-diagnostic.txt
 
       - name: Save diagnostic report
