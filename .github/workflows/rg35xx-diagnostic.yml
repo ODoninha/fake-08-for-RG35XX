@@ -1,0 +1,60 @@
+
+name: RG35XX Toolchain Diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    name: Check ARM toolchain
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download candidate toolchain image
+        run: docker pull miyoocfw/toolchain-shared-uclibc:latest
+
+      - name: Inspect compiler and build test binary
+        shell: bash
+        run: |
+          set -o pipefail
+
+          docker run --rm \
+            --entrypoint /bin/sh \
+            miyoocfw/toolchain-shared-uclibc:latest \
+            -c '
+              set -eu
+
+              CC=arm-miyoo-linux-uclibcgnueabi-gcc
+
+              echo "=== COMPILER ==="
+              command -v "$CC"
+              "$CC" -dumpmachine
+
+              echo "=== COMPILER VERSION ==="
+              "$CC" -v 2>&1
+
+              echo "=== SYSROOT ==="
+              "$CC" -print-sysroot
+
+              echo "=== TARGET OPTIONS ==="
+              "$CC" -Q --help=target 2>&1 |
+                grep -E "march|mcpu|mfloat-abi|mfpu" || true
+
+              echo "=== BUILD TEST ==="
+              printf "int main(void) { return 0; }\n" > /tmp/test.c
+              "$CC" /tmp/test.c -o /tmp/test-arm
+
+              echo "=== ELF ATTRIBUTES ==="
+              readelf -h -A -d /tmp/test-arm
+            ' 2>&1 | tee rg35xx-diagnostic.txt
+
+      - name: Save diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RG35XX-Diagnostic
+          path: rg35xx-diagnostic.txt
+          if-no-files-found: warn
