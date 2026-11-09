@@ -1,0 +1,59 @@
+
+name: Build FAKE-08 for RG35XX
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile RG35XX Libretro Core
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download ARM toolchain
+        run: docker pull miyoocfw/toolchain-shared-uclibc:latest
+
+      - name: Compile FAKE-08
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            --entrypoint /bin/sh \
+            miyoocfw/toolchain-shared-uclibc:latest \
+            -c '
+              set -eu
+
+              CXX=arm-miyoo-linux-uclibcgnueabi-g++
+
+              echo "=== COMPILER ==="
+              command -v "$CXX"
+
+              echo "=== BUILDING LIBRETRO CORE ==="
+
+              make -C platform/libretro \
+                platform=unix \
+                CXX="$CXX" \
+                CFLAGS="-O2 -march=armv5tej -mtune=arm926ej-s -mfloat-abi=soft -Wall -D__LIBRETRO__ -DMINIZ_NO_TIME -ffunction-sections -MMD -MP -std=gnu++17 -fno-rtti -I../../source -I../../libs/z8lua -I../../libs/lodepng -I../../libs/miniz -I../../libs/simpleini -I." \
+                V=1
+
+              echo "=== CHECKING OUTPUT ==="
+              test -f platform/libretro/fake08_libretro.so
+
+              file platform/libretro/fake08_libretro.so
+              readelf -h -A platform/libretro/fake08_libretro.so
+
+              echo "=== BUILD COMPLETED ==="
+            '
+
+      - name: Upload compiled core
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAKE08-RG35XX
+          path: platform/libretro/fake08_libretro.so
+          if-no-files-found: error
