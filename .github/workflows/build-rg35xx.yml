@@ -29,26 +29,23 @@ jobs:
             -c '
               set -eu
 
-              CXX=arm-miyoo-linux-uclibcgnueabi-g++
+              export CC=arm-miyoo-linux-uclibcgnueabi-gcc
+              export CXX=arm-miyoo-linux-uclibcgnueabi-g++
 
-              echo "=== COMPILER ==="
-              command -v "$CXX"
+              echo "=== CLEAN ==="
+              make -C platform/libretro clean
 
-              echo "=== BUILDING LIBRETRO CORE ==="
-
+              echo "=== COMPILE ==="
               make -C platform/libretro \
                 platform=unix \
+                CC="$CC" \
                 CXX="$CXX" \
-                CFLAGS="-O2 -march=armv5tej -mtune=arm926ej-s -mfloat-abi=soft -Wall -D__LIBRETRO__ -DMINIZ_NO_TIME -ffunction-sections -MMD -MP -std=gnu++17 -fno-rtti -I../../source -I../../libs/z8lua -I../../libs/lodepng -I../../libs/miniz -I../../libs/simpleini -I." \
                 V=1
 
-              echo "=== CHECKING OUTPUT ==="
+              echo "=== VERIFY ==="
               test -f platform/libretro/fake08_libretro.so
-
               file platform/libretro/fake08_libretro.so
               readelf -h -A platform/libretro/fake08_libretro.so
-
-              echo "=== BUILD COMPLETED ==="
             '
 
       - name: Upload compiled core
