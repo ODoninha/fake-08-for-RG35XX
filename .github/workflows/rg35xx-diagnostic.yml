@@ -30,33 +30,21 @@ jobs:
               CC=arm-miyoo-linux-uclibcgnueabi-gcc
               CXX=arm-miyoo-linux-uclibcgnueabi-g++
 
-              echo "=== COMPILER ==="
+              echo "=== C COMPILER ==="
               command -v "$CC"
               "$CC" -dumpmachine
 
-              echo "=== COMPILER VERSION ==="
-              "$CC" -v 2>&1
-
-              echo "=== SYSROOT ==="
-              "$CC" -print-sysroot
-
-              echo "=== TARGET OPTIONS ==="
-              "$CC" -Q --help=target 2>&1 |
-                grep -E "march|mcpu|mfloat-abi|mfpu" || true
+              echo "=== C++ COMPILER ==="
+              command -v "$CXX"
+              "$CXX" -dumpmachine
+              "$CXX" -v 2>&1
 
               echo "=== BUILD C TEST ==="
               printf "int main(void) { return 0; }\n" > /tmp/test.c
               "$CC" /tmp/test.c -o /tmp/test-arm
 
-              echo "=== C ELF ATTRIBUTES ==="
-              readelf -h -A -d /tmp/test-arm
-
-              echo "=== C++ COMPILER ==="
-              command -v "$CXX"
-              "$CXX" -dumpmachine
-
               echo "=== BUILD C++ SHARED LIBRARY ==="
-              cat > /tmp/test.cpp <<EOF
+              cat > /tmp/test.cpp <<'EOF'
               #include <string>
 
               extern "C" int fake08_test() {
@@ -65,10 +53,13 @@ jobs:
               }
               EOF
 
-              "$CXX" -shared -fPIC -shared-libgcc /tmp/test.cpp -o /tmp/test-cpp.so
+              "$CXX" -shared -fPIC -shared-libgcc \
+                /tmp/test.cpp -o /tmp/test-cpp.so
 
               echo "=== C++ LIBRARY DEPENDENCIES ==="
               readelf -h -A -d -V /tmp/test-cpp.so
+
+              echo "=== C++ TEST COMPLETED ==="
             ' 2>&1 | tee rg35xx-diagnostic.txt
 
       - name: Save diagnostic report
